@@ -196,7 +196,6 @@ private fun TrackerApp() {
                     editingPrayer = prayer
                     editingFridayPrayer = isFriday
                 },
-                onAdhkar = { id, done -> changeDay { it.copy(adhkar = it.adhkar + (id to done)) } },
                 onQuran = { status -> changeDay { it.copy(quranStatus = status, quranRead = status == "كامل") } },
                 onSunnah = { id, status -> changeDay { it.copy(sunnah = it.sunnah + (id to status)) } },
                 onCount = { id, count -> changeDay { it.copy(adhkarCounts = it.adhkarCounts + (id to count)) } },
@@ -251,7 +250,6 @@ private fun TodayScreen(
     scores: DayScores,
     onToday: () -> Unit,
     onPrayer: (PrayerKind, Boolean) -> Unit,
-    onAdhkar: (String, Boolean) -> Unit,
     onCount: (String, Int) -> Unit,
     onQuran: (String) -> Unit,
     onSunnah: (String, String) -> Unit,
@@ -360,16 +358,22 @@ private fun TodayScreen(
             }
         }
 
-        SectionCard("الأذكار", "نفّذ الذكر في تطبيق الأذكار، ثم سجّل الإنجاز هنا") {
-            Catalog.adhkar.forEach { (id, title) ->
-                CheckLine(title, log.adhkar[id] == true) { onAdhkar(id, it) }
+        SectionCard("الأذكار العددية", "فقط الأذكار ذات الهدف ١٠٠ أو ٣٣، مرتبة حسب العدد") {
+            val completed = Catalog.adhkarCounts.count { (id, item) ->
+                (log.adhkarCounts[id] ?: 0) >= item.target
+            }
+            Text("الأذكار المكتملة: $"+"completed من $"+"{Catalog.adhkarCounts.size}",
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Green)
+            Text("أذكار ١٠٠ مرة", fontWeight = FontWeight.Bold, color = DarkText)
+            Catalog.adhkarCounts.filterValues { it.target == 100 }.forEach { (id, item) ->
+                CountLine(item.title, log.adhkarCounts[id] ?: 0, item.target) { onCount(id, it) }
             }
             HorizontalDivider()
-            Text("الأذكار العددية • الهدف 100 لكل ذكر", fontWeight = FontWeight.Bold, color = Green)
-            Catalog.adhkarCounts.forEach { (id, title) ->
-                CountLine(title, log.adhkarCounts[id] ?: 0) { onCount(id, it) }
+            Text("أذكار ٣٣ مرة", fontWeight = FontWeight.Bold, color = DarkText)
+            Catalog.adhkarCounts.filterValues { it.target == 33 }.forEach { (id, item) ->
+                CountLine(item.title, log.adhkarCounts[id] ?: 0, item.target) { onCount(id, it) }
             }
-            Text("العدادات أهداف متابعة، ولا نثبت عددًا شرعيًا لصيغة بلا دليل.",
+            Text("الأعداد هنا أهداف شخصية للتتبع وفق قائمتك، وليست حكمًا شرعيًا بعدد الذكر.",
                 color = Muted, fontSize = 11.sp)
         }
 
@@ -441,29 +445,54 @@ private fun StatusLine(
 }
 
 @Composable
-private fun CountLine(title: String, count: Int, onChange: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(title, fontSize = 12.sp, modifier = Modifier.weight(1f))
-            Text("${count.coerceAtLeast(0)} / 100", fontWeight = FontWeight.Bold, color = Green)
-        }
-        LinearProgressIndicator(
-            progress = { count.coerceIn(0, 100) / 100f },
-            modifier = Modifier.fillMaxWidth().height(5.dp),
-            color = Green, trackColor = LightGreen
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            listOf(-1, 1, 10, 25, 100).forEach { amount ->
-                OutlinedButton(
-                    onClick = { onChange((count + amount).coerceIn(0, 10000)) },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
-                ) {
-                    Text(if (amount > 0) "+" + amount else "−1", fontSize = 12.sp)
+private fun CountLine(title: String, count: Int, target: Int, onChange: (Int) -> Unit) {
+    val current = count.coerceIn(0, target)
+    val finished = current == target
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = if (finished) LightGreen else Page)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f))
+                Text("$"+"current / $"+"target", fontWeight = FontWeight.Bold, color = Green,
+                    fontSize = 14.sp)
+            }
+            LinearProgressIndicator(
+                progress = { current.toFloat() / target },
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+                color = Green, trackColor = Color.White
+            )
+            if (finished) {
+                Text("✓ اكتمل الذكر", color = Green, fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp)
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf(-1, 1, 10, target).forEach { amount ->
+                    OutlinedButton(
+                        onClick = { onChange((current + amount).coerceIn(0, target)) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
+                        Text(if (amount > 0) "+" + amount else "−1", fontSize = 12.sp)
+                    }
+                }
+                TextButton(onClick = { onChange(0) }) {
+                    Text("تصفير", fontSize = 11.sp)
                 }
             }
-            TextButton(onClick = { onChange(0) }) { Text("صفر", fontSize = 11.sp) }
         }
     }
 }
