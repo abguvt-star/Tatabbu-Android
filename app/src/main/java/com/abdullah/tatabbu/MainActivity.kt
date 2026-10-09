@@ -393,6 +393,17 @@ private fun TodayScreen(
             }
         }
 
+        SectionCard("المتابعة الدورية", "بنود أسبوعية وشهرية مستقلة عن نسبة اليوم") {
+            if (isFriday) {
+                CheckLine("تحديث مواقيت الصلاة لهذا الأسبوع", log.friday["prayer_times"] == true) {
+                    onFriday("prayer_times", it)
+                }
+            }
+            CheckLine("الصدقة الشهرية (سجّلها يوم تنفيذها)", log.friday["charity"] == true) {
+                onFriday("charity", it)
+            }
+        }
+
         SectionCard("زيارة الوالدين", "تسجيل مستقل لا يدخل في تقييم العبادات") {
             CheckLine("تمت زيارة الوالدين", log.parentsVisited, onParents)
         }
