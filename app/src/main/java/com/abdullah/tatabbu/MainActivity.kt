@@ -169,9 +169,9 @@ private fun TrackerApp() {
             ) {
                 Column {
                     Text("تتبّع", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = DarkText)
-                    Text("إنجازاتك خطوة بخطوة", color = Muted, fontSize = 12.sp)
+                    Text("التتبع الديني اليومي", color = Muted, fontSize = 12.sp)
                 }
-                Text("نسخة تجريبية 0.1", fontSize = 11.sp, color = Muted)
+                Text("نسخة 0.2", fontSize = 11.sp, color = Muted)
             }
         },
         bottomBar = {
@@ -196,8 +196,10 @@ private fun TrackerApp() {
                     editingFridayPrayer = isFriday
                 },
                 onAdhkar = { id, done -> changeDay { it.copy(adhkar = it.adhkar + (id to done)) } },
-                onQuran = { done -> changeDay { it.copy(quranRead = done) } },
-                onExtra = { id, done -> changeDay { it.copy(extras = it.extras + (id to done)) } },
+                onQuran = { status -> changeDay { it.copy(quranStatus = status, quranRead = status == "كامل") } },
+                onSunnah = { id, status -> changeDay { it.copy(sunnah = it.sunnah + (id to status)) } },
+                onCount = { id, count -> changeDay { it.copy(adhkarCounts = it.adhkarCounts + (id to count)) } },
+                onParents = { done -> changeDay { it.copy(parentsVisited = done) } },
                 onFriday = { id, done -> changeDay { it.copy(friday = it.friday + (id to done)) } },
                 modifier = Modifier.padding(inner)
             )
@@ -249,8 +251,10 @@ private fun TodayScreen(
     onToday: () -> Unit,
     onPrayer: (PrayerKind, Boolean) -> Unit,
     onAdhkar: (String, Boolean) -> Unit,
-    onQuran: (Boolean) -> Unit,
-    onExtra: (String, Boolean) -> Unit,
+    onCount: (String, Int) -> Unit,
+    onQuran: (String) -> Unit,
+    onSunnah: (String, String) -> Unit,
+    onParents: (Boolean) -> Unit,
     onFriday: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -264,46 +268,45 @@ private fun TodayScreen(
             Column {
                 Text(date.format(DateTimeFormatter.ofPattern("EEEE، d MMMM yyyy", ArabicLocale)),
                     fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Text(if (scores.recordedPrayers < 5) "التسجيل جزئي: ${scores.recordedPrayers} من 5 صلوات"
-                    else "تم تسجيل الصلوات الخمس", fontSize = 12.sp, color = Muted)
+                Text("الصلوات المسجلة: ${scores.recordedPrayers} من 5",
+                    fontSize = 12.sp, color = Muted)
             }
             if (date != LocalDate.now()) TextButton(onClick = onToday) { Text("العودة لليوم") }
         }
+
         Card(colors = CardDefaults.cardColors(containerColor = Color.White),
             shape = RoundedCornerShape(20.dp)) {
             Row(Modifier.fillMaxWidth().padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {
-                    Text("مؤشر إنجاز اليوم", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(if (scores.hasAnyData) "نسبة مبدئية حسب ما سجّلته" else "ابدأ بتسجيل أول نشاط",
-                        fontSize = 12.sp, color = Muted)
-                    Text("ليست حكمًا على قبول العبادة", fontSize = 11.sp, color = Muted)
+                    Text("مؤشر اليوم الديني", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(7.dp))
+                    Text(if (scores.hasAnyData) ScoreEngine.rating(scores.total)
+                        else "يظهر التقييم بعد تسجيل أول صلاة",
+                        color = Green, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("مؤشر متابعة شخصي وليس حكمًا على قبول العبادة",
+                        fontSize = 11.sp, color = Muted)
                 }
-                ScoreCircle(scores.total)
+                if (scores.hasAnyData) ScoreCircle(scores.total)
+                else Text("—", fontSize = 35.sp, color = Muted)
             }
         }
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard("الصلوات", scores.prayers, "◈", LightGreen, Green, Modifier.weight(1f))
-            MetricCard("الأذكار", scores.adhkar, "◉", LightBlue, Blue, Modifier.weight(1f))
+            MetricCard("أداء الصلاة", scores.prayers, "◈", LightGreen, Green, Modifier.weight(1f))
+            MetricCard("في الوقت", scores.onTime, "◷", LightBlue, Blue, Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard("القرآن", scores.quran, "▤", LightPurple, Purple, Modifier.weight(1f))
-            MetricCard("الأنشطة", scores.extras, "☑", LightOrange, Orange, Modifier.weight(1f))
+            MetricCard("الجماعة", scores.congregation, "◉", LightPurple, Purple, Modifier.weight(1f))
+            MetricCard("السنن والوتر", scores.sunnah, "☾", LightOrange, Orange, Modifier.weight(1f))
         }
-        if (isFriday) {
-            Card(colors = CardDefaults.cardColors(containerColor = LightPurple),
-                shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("الجمعة | متابعة خاصة", fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold, color = Purple)
-                    Text("صلاة الجمعة وسورة الكهف والصلاة على النبي وأعمال اليوم",
-                        fontSize = 12.sp, color = DarkText)
-                }
-            }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricCard("الأذكار", scores.adhkar, "✧", LightBlue, Blue, Modifier.weight(1f))
+            MetricCard("القرآن", scores.quran, "▤", LightGreen, Green, Modifier.weight(1f))
         }
-        SectionCard("الصلوات الخمس", "اضغط على الصلاة لتسجيل الوقت والمسجد وتكبيرة الإحرام") {
+
+        SectionCard("الصلوات الخمس", "التوقيت والمكان والجماعة وتكبيرة الإحرام لكل صلاة") {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 PrayerKind.entries.forEach { prayer ->
                     val current = ScoreEngine.effectivePrayer(date, log, prayer)
@@ -330,44 +333,120 @@ private fun TodayScreen(
                     }
                 }
             }
-        }
-        if (isFriday) {
-            SectionCard("أعمال يوم الجمعة", "قسم خاص يظهر تلقائيًا يوم الجمعة", LightPurple) {
-                Text("صلاة الجمعة", fontWeight = FontWeight.Bold)
-                Text("تُحسب ضمن الصلوات بدل الظهر عند تسجيل أدائها.", fontSize = 12.sp, color = Muted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onPrayer(PrayerKind.DHUHR, true) },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                        Text("تسجيل الجمعة", fontSize = 12.sp)
-                    }
-                    OutlinedButton(onClick = { onPrayer(PrayerKind.DHUHR, false) },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                        Text("تسجيل الظهر", fontSize = 12.sp)
+            Text("تكبيرة الإحرام: ${scores.openingTakbir}% من الصلوات الخمس",
+                color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            if (isFriday) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { onPrayer(PrayerKind.DHUHR, false) }) {
+                        Text("تسجيل الظهر بدل الجمعة", fontSize = 11.sp)
                     }
                 }
-                HorizontalDivider(color = Color(0xFFE6E9EE))
-                Catalog.friday.forEach { (id, title) ->
-                    CheckLine(title, log.friday[id] == true) { onFriday(id, it) }
-                }
-                Text("إنجاز أعمال الجمعة: ${scores.friday ?: 0}%", color = Purple, fontWeight = FontWeight.Bold)
             }
         }
-        SectionCard("أذكار اليوم", "تسجّل إنجازها هنا بعد استخدام تطبيق الأذكار") {
+
+        SectionCard("السنن الرواتب والوتر", "لكل بند: تم أو جزئي أو لم يتم") {
+            Catalog.sunnah.forEach { (id, title) ->
+                val saved = log.sunnah[id] ?: if (id == "witr" && log.extras["witr"] == true) "تم" else ""
+                StatusLine(title, saved, listOf("تم", "جزئي", "لم يتم")) {
+                    onSunnah(id, it)
+                }
+            }
+        }
+
+        SectionCard("الأذكار", "نفّذ الذكر في تطبيق الأذكار، ثم سجّل الإنجاز هنا") {
             Catalog.adhkar.forEach { (id, title) ->
                 CheckLine(title, log.adhkar[id] == true) { onAdhkar(id, it) }
             }
+            HorizontalDivider()
+            Text("الأذكار العددية • الهدف 100 لكل ذكر", fontWeight = FontWeight.Bold, color = Green)
+            Catalog.adhkarCounts.forEach { (id, title) ->
+                CountLine(title, log.adhkarCounts[id] ?: 0) { onCount(id, it) }
+            }
+            Text("العدادات أهداف متابعة، ولا نثبت عددًا شرعيًا لصيغة بلا دليل.",
+                color = Muted, fontSize = 11.sp)
         }
-        SectionCard("القرآن الكريم", "التتبع مستقل عن تطبيق القرآن") {
-            CheckLine("قراءة القرآن اليوم", log.quranRead, onQuran)
-        }
-        SectionCard("السنن والأنشطة الأخرى", "عناصر مبدئية قابلة للتخصيص في نسخة لاحقة") {
-            Catalog.extras.forEach { (id, title) ->
-                CheckLine(title, log.extras[id] == true) { onExtra(id, it) }
+
+        SectionCard("القرآن الكريم", if (isFriday)
+            "يوم الجمعة: سورة الكهف بدل ورد الختمة" else
+            "ورد الختمة: كامل أو جزئي أو لم يتم") {
+            val saved = log.quranStatus.ifBlank {
+                if (log.quranRead || (isFriday && log.friday["kahf"] == true)) "كامل" else ""
+            }
+            StatusLine(if (isFriday) "سورة الكهف" else "الورد اليومي",
+                saved, listOf("كامل", "جزئي", "لم يتم"), onQuran)
+            if (!isFriday) {
+                Text("الختمة الحالية في نوشن: 12 سبتمبر – 27 أكتوبر 2026. يوم الجمعة مستثنى من الورد.",
+                    fontSize = 12.sp, color = Muted)
             }
         }
-        Text("البيانات محفوظة على هذا الجهاز. يمكنك تصدير نسخة احتياطية من الإعدادات.",
+
+        if (isFriday) {
+            SectionCard("المتابعة الخاصة بيوم الجمعة", "تقييم مستقل عن نسبة اليوم", LightPurple) {
+                CheckLine("تحري ساعة الإجابة والدعاء", log.friday["dua"] == true) {
+                    onFriday("dua", it)
+                }
+                CheckLine("الصلاة على النبي ﷺ (متابعة اختيارية)", log.friday["salawat"] == true) {
+                    onFriday("salawat", it)
+                }
+                Text("إنجاز الجمعة: ${scores.friday ?: 0}% • 50% للكهف و50% للدعاء",
+                    color = Purple, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        SectionCard("زيارة الوالدين", "تسجيل مستقل لا يدخل في تقييم العبادات") {
+            CheckLine("تمت زيارة الوالدين", log.parentsVisited, onParents)
+        }
+
+        Text("البيانات محفوظة على جوالك، ويمكن تصدير نسخة احتياطية من الإعدادات.",
             color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+    }
+}
+
+@Composable
+private fun StatusLine(
+    title: String, value: String, options: List<String>,
+    onChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            options.forEach { option ->
+                FilterChip(
+                    selected = value == option,
+                    onClick = { onChange(if (value == option) "" else option) },
+                    label = { Text(option, fontSize = 11.sp) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountLine(title: String, count: Int, onChange: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("${count.coerceAtLeast(0)} / 100", fontWeight = FontWeight.Bold, color = Green)
+        }
+        LinearProgressIndicator(
+            progress = { count.coerceIn(0, 100) / 100f },
+            modifier = Modifier.fillMaxWidth().height(5.dp),
+            color = Green, trackColor = LightGreen
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            listOf(-1, 1, 10, 25, 100).forEach { amount ->
+                OutlinedButton(
+                    onClick = { onChange((count + amount).coerceIn(0, 10000)) },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                ) {
+                    Text(if (amount > 0) "+$"+"amount" else "−1", fontSize = 12.sp)
+                }
+            }
+            TextButton(onClick = { onChange(0) }) { Text("صفر", fontSize = 11.sp) }
+        }
     }
 }
 
@@ -457,10 +536,16 @@ private fun PrayerEditor(
                     }
                     ToggleLine("صليتها في المسجد", draft.inMosque) {
                         draft = draft.copy(inMosque = it,
+                            inCongregation = if (it) draft.inCongregation else false,
+                            openingTakbir = if (it) draft.openingTakbir else false)
+                    }
+                    ToggleLine("صليتها جماعة في المسجد", draft.inCongregation,
+                        enabled = draft.inMosque) {
+                        draft = draft.copy(inCongregation = it,
                             openingTakbir = if (it) draft.openingTakbir else false)
                     }
                     ToggleLine("أدركت تكبيرة الإحرام مع الإمام", draft.openingTakbir,
-                        enabled = draft.inMosque) {
+                        enabled = draft.inMosque && draft.inCongregation) {
                         draft = draft.copy(openingTakbir = it)
                     }
                     Text("درجة هذه الصلاة: ${ScoreEngine.prayerScore(draft)} من 100",
@@ -590,6 +675,18 @@ private fun StatsScreen(
                 MetricCard("القرآن", avg(recorded.map { it.second.quran }), "▤",
                     LightOrange, Orange, Modifier.weight(1f))
             }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricCard("في الوقت", avg(recorded.map { it.second.onTime }), "◷",
+                    LightBlue, Blue, Modifier.weight(1f))
+                MetricCard("الجماعة", avg(recorded.map { it.second.congregation }), "◉",
+                    LightGreen, Green, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricCard("السنن", avg(recorded.map { it.second.sunnah }), "☾",
+                    LightPurple, Purple, Modifier.weight(1f))
+                MetricCard("تكبيرة الإحرام", avg(recorded.map { it.second.openingTakbir }), "✧",
+                    LightOrange, Orange, Modifier.weight(1f))
+            }
             Text("ملاحظة: الأيام ذات التسجيل الجزئي قد تُظهر نسبة أقل من الأداء الفعلي.",
                 fontSize = 12.sp, color = Muted)
         }
@@ -638,11 +735,11 @@ private fun SettingsScreen(onExport: () -> Unit, onImport: () -> Unit, modifier:
             Text("تنبيه: الاسترجاع يستبدل جميع البيانات الموجودة حاليًا في التطبيق.",
                 fontSize = 12.sp, color = Orange)
         }
-        SectionCard("طريقة حساب الصلاة", "الأوزان المبدئية التي اتفقنا عليها") {
-            Text("50 نقطة للصلاة في وقتها")
-            Text("30 نقطة للصلاة في المسجد")
-            Text("20 نقطة لإدراك تكبيرة الإحرام مع الإمام")
-            Text("كل صلاة من 100، ومتوسط الخمس هو مؤشر الصلوات اليومي.",
+        SectionCard("طريقة حساب الإنجاز", "وفق نموذج الملف الديني في نوشن") {
+            Text("40% لأداء الصلوات، 20% للصلاة في الوقت، 10% للجماعة")
+            Text("10% للسنن والوتر، 10% للأذكار، 10% للقرآن")
+            Text("تكبيرة الإحرام مؤشر مستقل، ودرجة جودة كل صلاة 50/30/20.")
+            Text("تقييم الجمعة مستقل: 50% للكهف و50% للدعاء.",
                 fontSize = 12.sp, color = Muted)
         }
         SectionCard("مهم", "حتى تكون الإحصائيات مفهومة") {
@@ -651,7 +748,7 @@ private fun SettingsScreen(onExport: () -> Unit, onImport: () -> Unit, modifier:
             Text("• لا تحتاج إنترنت لاستخدام التتبع الأساسي.")
             Text("• هذه درجات تنظيمية، ولا تقيس قبول العبادة أو ثوابها.")
         }
-        Text("تتبّع • النسخة التجريبية 0.1", fontSize = 12.sp, color = Muted,
+        Text("تتبّع • النسخة 0.2", fontSize = 12.sp, color = Muted,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
