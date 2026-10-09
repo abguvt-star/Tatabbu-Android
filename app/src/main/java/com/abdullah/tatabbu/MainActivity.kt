@@ -442,7 +442,7 @@ private fun CountLine(title: String, count: Int, onChange: (Int) -> Unit) {
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
                 ) {
-                    Text(if (amount > 0) "+$"+"amount" else "−1", fontSize = 12.sp)
+                    Text(if (amount > 0) "+" + amount else "−1", fontSize = 12.sp)
                 }
             }
             TextButton(onClick = { onChange(0) }) { Text("صفر", fontSize = 11.sp) }
