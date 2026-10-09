@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.chrono.HijrahDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -268,6 +269,12 @@ private fun TodayScreen(
             Column {
                 Text(date.format(DateTimeFormatter.ofPattern("EEEE، d MMMM yyyy", ArabicLocale)),
                     fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(
+                    HijrahDate.from(date).format(
+                        DateTimeFormatter.ofPattern("d MMMM yyyy", ArabicLocale)
+                    ) + " هـ",
+                    color = Green, fontWeight = FontWeight.SemiBold, fontSize = 14.sp
+                )
                 Text("الصلوات المسجلة: ${scores.recordedPrayers} من 5",
                     fontSize = 12.sp, color = Muted)
             }
