@@ -172,7 +172,7 @@ private fun TrackerApp() {
                     Text("تتبّع", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = DarkText)
                     Text("التتبع الديني اليومي", color = Muted, fontSize = 12.sp)
                 }
-                Text("نسخة 0.2", fontSize = 11.sp, color = Muted)
+                Text("نسخة 0.3", fontSize = 11.sp, color = Muted)
             }
         },
         bottomBar = {
@@ -362,7 +362,7 @@ private fun TodayScreen(
             val completed = Catalog.adhkarCounts.count { (id, item) ->
                 (log.adhkarCounts[id] ?: 0) >= item.target
             }
-            Text("الأذكار المكتملة: $"+"completed من $"+"{Catalog.adhkarCounts.size}",
+            Text("الأذكار المكتملة: ${completed} من ${Catalog.adhkarCounts.size}",
                 fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Green)
             Text("أذكار ١٠٠ مرة", fontWeight = FontWeight.Bold, color = DarkText)
             Catalog.adhkarCounts.filterValues { it.target == 100 }.forEach { (id, item) ->
@@ -463,7 +463,7 @@ private fun CountLine(title: String, count: Int, target: Int, onChange: (Int) ->
             ) {
                 Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f))
-                Text("$"+"current / $"+"target", fontWeight = FontWeight.Bold, color = Green,
+                Text("${current} / ${target}", fontWeight = FontWeight.Bold, color = Green,
                     fontSize = 14.sp)
             }
             LinearProgressIndicator(
