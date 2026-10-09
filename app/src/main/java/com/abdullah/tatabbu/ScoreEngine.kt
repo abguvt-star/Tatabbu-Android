@@ -32,21 +32,20 @@ data class DayLog(
     val notes: String = ""
 )
 
+/** A personal repetition target chosen by the user; not a religious ruling on required counts. */
+data class DhikrTarget(val title: String, val target: Int)
+
 object Catalog {
-    val adhkar = linkedMapOf(
-        "morning" to "أذكار الصباح",
-        "evening" to "أذكار المساء",
-        "sleep" to "أذكار النوم",
-        "hawqala" to "لا حول ولا قوة إلا بالله",
-        "tasbih_four" to "سبحان الله والحمد لله ولا إله إلا الله والله أكبر",
-        "tasbih_double" to "سبحان الله وبحمده سبحان الله العظيم",
-        "yunus" to "لا إله إلا أنت سبحانك إني كنت من الظالمين",
-        "rabb_inni" to "رب إني لما أنزلت إلي من خير فقير"
-    )
+    // Keep the 100-count items first, followed by the 33-count items, as in the user's screenshots.
+    // Existing IDs for the three original 100-count counters are unchanged to retain saved progress.
     val adhkarCounts = linkedMapOf(
-        "istighfar" to "أستغفر الله وأتوب إليه",
-        "tasbih100" to "سبحان الله وبحمده",
-        "tahlil100" to "لا إله إلا الله وحده لا شريك له له الملك وله الحمد وهو على كل شيء قدير"
+        "hawqala100" to DhikrTarget("لا حول ولا قوة إلا بالله العلي العظيم", 100),
+        "istighfar" to DhikrTarget("أستغفر الله وأتوب إليه", 100),
+        "tasbih100" to DhikrTarget("سبحان الله وبحمده", 100),
+        "tahlil100" to DhikrTarget("لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير", 100),
+        "tasbih_double" to DhikrTarget("سبحان الله وبحمده، سبحان الله العظيم", 33),
+        "yunus" to DhikrTarget("لا إله إلا أنت سبحانك إني كنت من الظالمين", 33),
+        "rabb_inni" to DhikrTarget("رب إني لما أنزلت إلي من خير فقير", 33)
     )
     val sunnah = linkedMapOf(
         "fajr" to "سنة الفجر",
@@ -126,10 +125,11 @@ object ScoreEngine {
             }
         }, Catalog.sunnah.size * 100)
 
-        val adhkarDone = Catalog.adhkar.keys.count { day.adhkar[it] == true } * 100
-        val counted = Catalog.adhkarCounts.keys.sumOf { (day.adhkarCounts[it] ?: 0).coerceIn(0, 100) }
-        val adhkar = percent(adhkarDone + counted,
-            (Catalog.adhkar.size + Catalog.adhkarCounts.size) * 100)
+        // Each dhikr has equal weight when its own 100/33 target is reached.
+        // Unnumbered adhkar from older backups remain stored but do not enter this indicator.
+        val adhkar = (Catalog.adhkarCounts.entries.sumOf { (id, item) ->
+            100.0 * (day.adhkarCounts[id] ?: 0).coerceIn(0, item.target) / item.target
+        } / Catalog.adhkarCounts.size).roundToInt()
         val quran = quranPercent(day)
 
         // Same daily weights as the Notion religious tracker: 40/20/10/10/10/10.
