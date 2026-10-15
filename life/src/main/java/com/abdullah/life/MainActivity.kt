@@ -140,6 +140,18 @@ data class FormData(val title:String,val note:String,val fileId:String?,val time
    detail=null
   }catch(e:Exception){toast(context,"تعذر الحذف: ${e.message}")}
  }}
+ val restore:(String,String)->Unit={k,id->scope.launch{
+  try {
+   val rows=when(k) {
+    "مهمة"->d.restoreTask(id);"ملف"->d.restoreFile(id)
+    "موعد"->d.restoreEvent(id);"نشاط"->d.restoreActivity(id)
+    "مشروع"->d.restoreProject(id);"متتبّع"->d.restoreTracker(id)
+    "حالة"->d.restoreCase(id);"التقاط"->d.restoreCapture(id)
+    "مرجع"->d.restoreReference(id);else->0
+   }
+   if(rows>0){detail=null;toast(context,"تمت استعادة العنصر")}else toast(context,"العنصر غير موجود في المحذوفات")
+  }catch(e:Exception){toast(context,"تعذرت الاستعادة: ${e.message}")}
+ }}
  val convert:(LifeCapture)->Unit={item->scope.launch{
   try{LifeBackup.convertCaptureToTask(db,item);toast(context,"أصبحت مهمة مرتبطة بسجل الالتقاط")}
   catch(e:Exception){toast(context,"لم يتم التحويل: ${e.message}")}
@@ -170,7 +182,7 @@ data class FormData(val title:String,val note:String,val fileId:String?,val time
     val key=detail!!
     DetailScreen(key.first,key.second,s,openAdd,
      onOpen={k,id->detail=k to id},onBack={detail=null},onDone=done,
-     onDelete=delete,onTrack=track,onConvert=convert,
+     onDelete=delete,onRestore=restore,onTrack=track,onConvert=convert,
      onUpdate={k,id,st,stop,next->scope.launch{
       when(k){
        "ملف"->files.find{it.id==id}?.let{d.putFile(it.copy(currentState=st,lastStopPoint=stop,nextAction=next,updatedAt=clock()))}
