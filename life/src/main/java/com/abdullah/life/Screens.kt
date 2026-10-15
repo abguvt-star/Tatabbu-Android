@@ -132,7 +132,7 @@ val modes=listOf("طبيعي","مخفف","طوارئ","إجازة")
   Text("لا تخزّن كلمات المرور أو رموز الاستعادة داخل السجلات العادية.",
    style=MaterialTheme.typography.bodySmall)
   InfoHeader("الإصدار")
-  Text("0.1.0 • نسخة أولية وظيفية؛ الميزات غير المكتملة غير مدّعاة.")
+  Text("0.1.1 • نسخة أولية وظيفية؛ الميزات غير المكتملة غير مدّعاة.")
  }
 }
 @Composable fun ModuleScreen(route:String,s:Snapshot,
