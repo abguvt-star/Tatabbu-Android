@@ -8,6 +8,9 @@ on:
       - 'build.gradle.kts'
       - '.github/workflows/build-life.yml'
   workflow_dispatch:
+concurrency:
+  group: abdullah-life-apk-release
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -46,18 +49,33 @@ jobs:
           name: Abdullah-Life-native-debug
           path: life/build/outputs/apk/debug/life-debug.apk
           if-no-files-found: error
-      - name: Publish direct APK within feature branch
+      - name: Publish verified APK with safe Git retry
+        shell: bash
         run: |
-          mkdir -p dist
-          cp life/build/outputs/apk/debug/life-debug.apk dist/abdullah-life.apk
-          cd dist
-          sha256sum abdullah-life.apk > abdullah-life.apk.sha256
-          printf '%s\n' "Package: com.abdullah.life" "Version: 0.1.1 (2)" "File: abdullah-life.apk" "Build: Android Native (debug signed)" > BUILD-INFO.txt
-          cd ..
+          set -euo pipefail
+          cp life/build/outputs/apk/debug/life-debug.apk "$RUNNER_TEMP/life-debug.apk"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/abdullah-life.apk dist/abdullah-life.apk.sha256 dist/BUILD-INFO.txt
-          if ! git diff --cached --quiet; then
-            git commit -m "Publish عبدالله حياة build"
-            git push origin HEAD:abdullah-life-unified
-          fi
+          for attempt in 1 2 3 4 5; do
+            git fetch origin abdullah-life-unified
+            git reset --hard origin/abdullah-life-unified
+            mkdir -p dist
+            cp "$RUNNER_TEMP/life-debug.apk" dist/abdullah-life.apk
+            cd dist
+            sha256sum abdullah-life.apk > abdullah-life.apk.sha256
+            printf '%s\n' "Package: com.abdullah.life" "Version: 0.1.1 (2)" "File: abdullah-life.apk" "Build: Android Native (debug signed)" > BUILD-INFO.txt
+            cd ..
+            git add dist/abdullah-life.apk dist/abdullah-life.apk.sha256 dist/BUILD-INFO.txt
+            if git diff --cached --quiet; then
+              echo "The verified APK is already published."
+              exit 0
+            fi
+            git commit -m "Publish verified عبدالله Life APK v0.1.1"
+            if git push origin HEAD:abdullah-life-unified; then
+              echo "Verified APK published."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "APK publishing failed after retries"
+          exit 1
