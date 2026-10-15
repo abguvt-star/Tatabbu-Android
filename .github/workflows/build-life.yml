@@ -28,10 +28,18 @@ jobs:
           gradle-version: '8.9'
       - name: Compile native Android APK
         run: gradle --no-daemon :life:assembleDebug
-      - name: Check APK
+      - name: Verify APK ZIP, package identity, version and signature
+        shell: bash
         run: |
-          test -s life/build/outputs/apk/debug/life-debug.apk
-          unzip -t life/build/outputs/apk/debug/life-debug.apk | tail -1
+          set -euo pipefail
+          apk="life/build/outputs/apk/debug/life-debug.apk"
+          test -s "$apk"
+          unzip -t "$apk" | tail -1
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | tee apk-badging.txt
+          grep -Fq "package: name='com.abdullah.life'" apk-badging.txt
+          grep -Fq "versionName='0.1.1'" apk-badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" | tee apk-signature.txt
+          sha256sum "$apk" | tee apk-build.sha256
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
@@ -42,9 +50,13 @@ jobs:
         run: |
           mkdir -p dist
           cp life/build/outputs/apk/debug/life-debug.apk dist/abdullah-life.apk
+          cd dist
+          sha256sum abdullah-life.apk > abdullah-life.apk.sha256
+          printf '%s\n' "Package: com.abdullah.life" "Version: 0.1.1 (2)" "File: abdullah-life.apk" "Build: Android Native (debug signed)" > BUILD-INFO.txt
+          cd ..
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/abdullah-life.apk
+          git add dist/abdullah-life.apk dist/abdullah-life.apk.sha256 dist/BUILD-INFO.txt
           if ! git diff --cached --quiet; then
             git commit -m "Publish عبدالله حياة build"
             git push origin HEAD:abdullah-life-unified
