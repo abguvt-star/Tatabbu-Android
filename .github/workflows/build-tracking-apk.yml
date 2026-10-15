@@ -1,0 +1,34 @@
+name: Build Idarat Tracking APK
+on:
+  push:
+    branches: [idarat-tracking-app6]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expand native Android project
+        run: |
+          base64 --decode idarat-source.tar.xz.b64 > /tmp/tracking.tar.xz
+          tar -xJf /tmp/tracking.tar.xz
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Assemble APK
+        run: gradle --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Idarat-AlTatabbu-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
