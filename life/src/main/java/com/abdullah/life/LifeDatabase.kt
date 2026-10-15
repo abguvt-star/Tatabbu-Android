@@ -122,6 +122,16 @@ data class LifeChange(@PrimaryKey val id:String=freshId(),val what:String,val en
  @Query("UPDATE life_cases SET deletedAt=:time WHERE id=:id") suspend fun trashCase(id:String,time:Long=clock())
  @Query("UPDATE life_captures SET deletedAt=:time WHERE id=:id") suspend fun trashCapture(id:String,time:Long=clock())
  @Query("UPDATE life_references SET deletedAt=:time WHERE id=:id") suspend fun trashReference(id:String,time:Long=clock())
+ @Query("UPDATE life_tasks SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreTask(id:String):Int
+ @Query("UPDATE life_files SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreFile(id:String):Int
+ @Query("UPDATE life_events SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreEvent(id:String):Int
+ @Query("UPDATE life_activities SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreActivity(id:String):Int
+ @Query("UPDATE life_projects SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreProject(id:String):Int
+ @Query("UPDATE life_trackers SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreTracker(id:String):Int
+ @Query("UPDATE life_tracking_entries SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreEntry(id:String):Int
+ @Query("UPDATE life_cases SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreCase(id:String):Int
+ @Query("UPDATE life_captures SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreCapture(id:String):Int
+ @Query("UPDATE life_references SET deletedAt=NULL WHERE id=:id AND deletedAt IS NOT NULL") suspend fun restoreReference(id:String):Int
  @Query("DELETE FROM life_changes") suspend fun clearChanges()
  @Query("DELETE FROM life_unresolved") suspend fun clearUnresolved()
  @Query("DELETE FROM life_tracking_entries") suspend fun clearEntries()
