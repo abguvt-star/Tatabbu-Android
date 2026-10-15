@@ -163,7 +163,7 @@ val modes=listOf("طبيعي","مخفف","طوارئ","إجازة")
    items(records.filter{it.deleted}){r->
     RecordCard(r,{onOpen(r.kind,r.id)})
    }
-   item{EmptyScreen("الاستعادة الفردية والحذف النهائي غير مفعّلين في هذه النسخة.")}
+   item{EmptyScreen("اضغط على أي عنصر لاستعادته. الحذف النهائي غير مفعّل حفاظًا على بياناتك.")}
   }
   return
  }
@@ -214,6 +214,7 @@ val modes=listOf("طبيعي","مخفف","طوارئ","إجازة")
 @Composable fun DetailScreen(kind:String,id:String,s:Snapshot,
  onCreate:(String,String?,String?,String?)->Unit,onOpen:(String,String)->Unit,
  onBack:()->Unit,onDone:(String,String)->Unit,onDelete:(String,String)->Unit,
+ onRestore:(String,String)->Unit,
  onTrack:(String,Double,String)->Unit,onConvert:(LifeCapture)->Unit,
  onUpdate:(String,String,String,String,String)->Unit){
  val record=s.rows().firstOrNull{it.kind==kind&&it.id==id}
@@ -229,6 +230,15 @@ val modes=listOf("طبيعي","مخفف","طوارئ","إجازة")
  var entryNote by remember(id){mutableStateOf("")}
  var confirmDelete by remember(id){mutableStateOf(false)}
  if(record==null){Column{TextButton(onClick=onBack){Text("رجوع")};EmptyScreen("العنصر غير موجود")};return}
+ if(record.deleted) {
+  Column(Modifier.fillMaxWidth().padding(top=16.dp)) {
+   TextButton(onClick=onBack){Text("‹ رجوع إلى سلة المحذوفات")}
+   Text(record.title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+   Text("هذا العنصر موجود في سلة المحذوفات، ولم تُحذف بياناته نهائيًا.")
+   Button(onClick={onRestore(kind,id)},modifier=Modifier.padding(top=12.dp)){Text("استعادة العنصر")}
+  }
+  return
+ }
  val linkedTasks=when(kind){
   "ملف"->s.tasks.filter{it.fileId==id}
   "مشروع"->s.tasks.filter{it.projectId==id}
