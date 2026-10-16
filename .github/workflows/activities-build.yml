@@ -1,0 +1,14 @@
+name: Android Activities Build Probe
+on:
+  push:
+    branches: [activities-build-20261016]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Java and SDK
+        run: |
+          java -version
+          test -d "$ANDROID_HOME"
+          echo "Build environment ready"
